@@ -9,50 +9,78 @@ app.use(cors());
 app.use(express.json());
 
 const users = [];
-
+//middleware
 function checksExistsUserAccount(request, response, next) {
-  const { username } = request.headers;
-}
+  const {username} = request.headers;
+  
+  const user = users.find((user)=> user.username === username)
 
-app.post("/users", (request, response) => {
+  if (!user){
+    return response.status(400).json({error:"Username not registred" })
+  }
+  request.username = user 
+
+  return next()
+}
+app.post("/users",(request, response) => {
   const { name, username } = request.body;
+
+  const UserAlredyExists = users.some((user) => 
+  user.username === username)
+
+  if (UserAlredyExists){
+    return response.status(400).json({error: "User already exists! "})
+  }
+
 
   const id = uuidv4;
 
-  const userData = {
+  users.push({
     id: uuidv4(),
     name,
     username,
     todos: [],
-  };
-  users.push(userData);
+  });
+  ;
 
-  return response.status(201).json(userData);
+  return response.status(201).json(users);
 });
 
-app.get("/todos", checksExistsUserAccount, (request, response) => {
+app.get("/todos", checksExistsUserAccount,(request, response) => {
   const { username } = request.headers;
-
-  return response.json(username.todos);
+   const user = users.find((user)=> user.username === username)
+  return response.json(user.todos);
 });
 
 app.post("/todos", checksExistsUserAccount, (request, response) => {
   const { title, deadline } = request.body;
-  const { username } = request.headers;
+  const { username } = request
 
   const createnewtodo = {
     id: uuidv4(),
     title,
     done: false,
-    deadline: new Date(deadline),
+    deadline,
     creat_at: new Date(),
   };
-  users.todos.push(createnewtodo);
+  username.todos.push(createnewtodo);
   return response.json(username.todos);
 });
 
 app.put("/todos/:id", checksExistsUserAccount, (request, response) => {
-  // Complete aqui
+   const {username} = request
+   const {title, deadline} = request.body 
+   const {id} = request.params
+
+ const checkId = username.todos.find((checkId)=> username.todos.id === id)
+ if (!checkId){
+   return response.status(400).json({error: "id not found"})}
+
+   username.deadline = deadline
+
+ username.title = title
+return response.status(201).send()
+
 });
 
 app.patch("/todos/:id/done", checksExistsUserAccount, (request, response) => {
