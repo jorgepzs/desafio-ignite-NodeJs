@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 
 const { v4: uuidv4 } = require("uuid");
+const { validate } = require("uuid");
 
 const app = express();
 
@@ -11,27 +12,25 @@ app.use(express.json());
 const users = [];
 //middleware
 function checksExistsUserAccount(request, response, next) {
-  const {username} = request.headers;
-  
-  const user = users.find((user)=> user.username === username)
+  const { username } = request.headers;
 
-  if (!user){
-    return response.status(400).json({error:"Username not registred" })
+  const user = users.find((user) => user.username === username);
+
+  if (!user) {
+    return response.status(400).json({ error: "Username not registred" });
   }
-  request.username = user 
+  request.userAuthenticated = user;
 
-  return next()
+  return next();
 }
-app.post("/users",(request, response) => {
+app.post("/users", (request, response) => {
   const { name, username } = request.body;
 
-  const UserAlredyExists = users.some((user) => 
-  user.username === username)
+  const UserAlredyExists = users.some((user) => user.username === username);
 
-  if (UserAlredyExists){
-    return response.status(400).json({error: "User already exists! "})
+  if (UserAlredyExists) {
+    return response.status(400).json({ error: "User already exists! " });
   }
-
 
   const id = uuidv4;
 
@@ -41,20 +40,18 @@ app.post("/users",(request, response) => {
     username,
     todos: [],
   });
-  ;
-
   return response.status(201).json(users);
 });
 
-app.get("/todos", checksExistsUserAccount,(request, response) => {
+app.get("/todos", checksExistsUserAccount, (request, response) => {
   const { username } = request.headers;
-   const user = users.find((user)=> user.username === username)
+  const user = users.find((user) => user.username === username);
   return response.json(user.todos);
 });
 
 app.post("/todos", checksExistsUserAccount, (request, response) => {
   const { title, deadline } = request.body;
-  const { username } = request
+  const { userAuthenticated } = request;
 
   const createnewtodo = {
     id: uuidv4(),
@@ -63,24 +60,34 @@ app.post("/todos", checksExistsUserAccount, (request, response) => {
     deadline,
     creat_at: new Date(),
   };
-  username.todos.push(createnewtodo);
-  return response.json(username.todos);
+  userAuthenticated.todos.push(createnewtodo);
+  return response.json(createnewtodo);
 });
 
 app.put("/todos/:id", checksExistsUserAccount, (request, response) => {
-   const {username} = request
-   const {title, deadline} = request.body 
-   const {id} = request.params
+  const { userAuthenticated } = request;
+  const { title, deadline } = request.body;
+  const { id } = request.params;
 
- const checkId = username.todos.find((checkId)=> username.todos.id === id)
- if (!checkId){
-   return response.status(400).json({error: "id not found"})}
+  const checkIdTodo = userAuthenticated.todos.find((todo) => todo.id === id);
+  if (!checkIdTodo) {
+    return response.status(400).json({ error: "id not found" });
+  }
 
-   username.deadline = deadline
+  var ISO_8601_FULL =
+    /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?(([+-]\d\d:\d\d)|Z)?$/i;
 
- username.title = title
-return response.status(201).send()
+  if (!ISO_8601_FULL.test(deadline)) {
+    return response.status(400).json({ error: "Format to date not suported" });
+  }
 
+  const todoData = userAuthenticated.todos.find((todo) => todo.id === id);
+
+  todoData.deadline = new Date(deadline);
+
+  todoData.title = title;
+
+  return response.status(201).json({ message: "Todo are update sucessful" });
 });
 
 app.patch("/todos/:id/done", checksExistsUserAccount, (request, response) => {
