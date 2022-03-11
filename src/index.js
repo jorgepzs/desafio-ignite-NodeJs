@@ -10,7 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 const users = [];
-//middleware
+//middleware verify for exists account
 function checksExistsUserAccount(request, response, next) {
   const { username } = request.headers;
 
@@ -23,6 +23,7 @@ function checksExistsUserAccount(request, response, next) {
 
   return next();
 }
+
 app.post("/users", (request, response) => {
   const { name, username } = request.body;
 
@@ -91,11 +92,36 @@ app.put("/todos/:id", checksExistsUserAccount, (request, response) => {
 });
 
 app.patch("/todos/:id/done", checksExistsUserAccount, (request, response) => {
-  // Complete aqui
+  const { userAuthenticated } = request;
+  const { id } = request.params;
+
+  const checkIdTodo = userAuthenticated.todos.find((todo) => todo.id === id);
+  if (!checkIdTodo) {
+    return response.status(400).json({ error: "id not found" });
+  }
+
+  let todoData = userAuthenticated.todos.find((todo) => todo.id === id);
+
+  todoData.done = true;
+
+  return response
+    .status(201)
+    .json({ message: "Congratulations for complete your todo" });
 });
 
 app.delete("/todos/:id", checksExistsUserAccount, (request, response) => {
-  // Complete aqui
+  const { userAuthenticated } = request;
+  const { id } = request.params;
+
+  const checkIdTodo = userAuthenticated.todos.find((todo) => todo.id === id);
+  if (!checkIdTodo) {
+    return response.status(400).json({ error: "id not found" });
+  }
+  let index = userAuthenticated.todos.findIndex((todo) => todo.id === id);
+
+  userAuthenticated.todos.splice(index, 1);
+
+  return response.status(204).send();
 });
 
 module.exports = app;
